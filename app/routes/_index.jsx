@@ -16,24 +16,18 @@ export async function action({ request }) {
   await connectToDB();
   const formData = await request.formData();
 
-  // Debug log incoming data
-  for (const [key, value] of formData.entries()) {
-    console.log(`${key}: ${value}`);
-  }
-
+  // ✅ Toggle using aggregation pipeline (atomic, no document fetch)
   const toggleId = formData.get("toggle");
   if (toggleId) {
-    const task = await Task.findById(toggleId);
-    if (task) {
-      task.completed = !task.completed;
-      await task.save();
-    }
+    await Task.findByIdAndUpdate(toggleId, [
+      { $set: { completed: { $not: "$completed" } } },
+    ]);
     return json({ success: true });
   }
 
+  // ✅ Add task
   const title = formData.get("title");
   if (!title || typeof title !== "string") {
-    console.log("❌ Title missing or invalid:", title);
     return json({ error: "Title is required" }, { status: 400 });
   }
 
@@ -57,11 +51,7 @@ export default function Index() {
       <h1 className="text-3xl font-bold mb-4 text-center">Task Manager</h1>
 
       {/* ✅ Add Task */}
-      <fetcher.Form
-        method="post"
-        ref={formRef}
-        className="flex gap-2 mb-6"
-      >
+      <fetcher.Form method="post" ref={formRef} className="flex gap-2 mb-6">
         <input
           type="text"
           name="title"
